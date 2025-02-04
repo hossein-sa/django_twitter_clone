@@ -1,6 +1,6 @@
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
-from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView, ListAPIView
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -103,3 +103,12 @@ class CommentDetailView(RetrieveUpdateDestroyAPIView):
         if instance.user != self.request.user:
             raise PermissionDenied("You can only delete your own comments.")
         instance.delete()
+
+class PersonalizedFeedView(ListAPIView):
+    """Shows tweets from users that the logged-in user follows."""
+    serializer_class = TweetSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        followed_users = self.request.user.following.values_list('id', flat=True)
+        return Tweet.objects.filter(user_id__in=followed_users).order_by('-created_at')
