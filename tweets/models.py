@@ -34,12 +34,14 @@ class Like(models.Model):
 
 
 class Comment(models.Model):
-    """Model for comments on tweets."""
+    """Model for comments on tweets, now supports nested replies."""
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, related_name="comments")
     content = models.TextField()
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name="replies")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.user.username} commented on {self.tweet.id}"
+

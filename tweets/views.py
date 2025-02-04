@@ -66,23 +66,32 @@ class LikeTweetView(APIView):
 # -------------------------- COMMENTS CRUD --------------------------
 
 class CommentListCreateView(ListCreateAPIView):
-    """Allows users to view all comments and post new ones."""
+    """Allows users to view comments and post new ones (including replies)."""
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        """Fetch comments for a specific tweet."""
+        """Fetch top-level comments for a tweet."""
         tweet_id = self.kwargs.get('tweet_id')
-        return Comment.objects.filter(tweet_id=tweet_id)
+        return Comment.objects.filter(tweet_id=tweet_id, parent__isnull=True)  # Only top-level comments
 
     def perform_create(self, serializer):
-        """Automatically assign the tweet and user to the comment."""
+        """Assign the user and tweet to the comment, allow replies."""
         try:
             tweet = Tweet.objects.get(id=self.kwargs.get('tweet_id'))
         except Tweet.DoesNotExist:
             raise PermissionDenied("Tweet does not exist.")
 
-        serializer.save(user=self.request.user, tweet=tweet)  # Assign tweet automatically
+        parent_id = self.request.data.get("parent")
+        parent_comment = None
+        if parent_id:
+            try:
+                parent_comment = Comment.objects.get(id=parent_id)
+            except Comment.DoesNotExist:
+                raise PermissionDenied("Parent comment does not exist.")
+
+        serializer.save(user=self.request.user, tweet=tweet, parent=parent_comment)
+
 
 
 

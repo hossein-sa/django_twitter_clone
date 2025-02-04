@@ -23,11 +23,25 @@ class LikeSerializer(serializers.ModelSerializer):
 
 
 class CommentSerializer(serializers.ModelSerializer):
-    """Serializer for comments."""
+    """Serializer for comments, including nested replies."""
     user = serializers.StringRelatedField(read_only=True)
+    replies = serializers.SerializerMethodField()
 
     class Meta:
         model = Comment
-        fields = ['id', 'user', 'content', 'created_at', 'updated_at']
+        fields = ['id', 'user', 'content', 'parent', 'replies', 'created_at', 'updated_at']
         extra_kwargs = {'tweet': {'required': False}}  # Ensure 'tweet' is not required
+
+    def get_replies(self, obj):
+        """Retrieve replies for a comment."""
+        replies = obj.replies.all()
+        return CommentSerializer(replies, many=True).data
+
+    def validate(self, data):
+        """Ensure a reply belongs to the same tweet as its parent comment."""
+        if data.get("parent"):
+            if data["parent"].tweet != data["tweet"]:
+                raise serializers.ValidationError("Replies must be on the same tweet as the parent comment.")
+        return data
+
 
