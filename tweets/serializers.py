@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Tweet, Like, Comment
+from .models import Tweet, Like, Comment, Notification
 
 
 class TweetSerializer(serializers.ModelSerializer):
@@ -43,5 +43,16 @@ class CommentSerializer(serializers.ModelSerializer):
             if data["parent"].tweet != data["tweet"]:
                 raise serializers.ValidationError("Replies must be on the same tweet as the parent comment.")
         return data
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    """Serializer for user notifications."""
+    sender = serializers.StringRelatedField()
+    tweet = serializers.PrimaryKeyRelatedField(queryset=Tweet.objects.all(), allow_null=True)
+    comment = serializers.PrimaryKeyRelatedField(queryset=Comment.objects.all(), allow_null=True)
+
+    class Meta:
+        model = Notification
+        fields = ['id', 'sender', 'notification_type', 'tweet', 'comment', 'is_read', 'created_at']
 
 

@@ -5,8 +5,8 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Tweet, Like, Comment
-from .serializers import TweetSerializer, CommentSerializer
+from .models import Tweet, Like, Comment, Notification
+from .serializers import TweetSerializer, CommentSerializer, NotificationSerializer
 
 
 # -------------------------- TWEETS CRUD --------------------------
@@ -57,26 +57,34 @@ class LikeTweetView(APIView):
         like, created = Like.objects.get_or_create(user=request.user, tweet=tweet)
 
         if created:
+            # Create a notification for the tweet owner
+            Notification.objects.create(
+                user=tweet.user,
+                sender=request.user,
+                notification_type='like',
+                tweet=tweet
+            )
             return Response({"message": "Tweet liked"}, status=status.HTTP_201_CREATED)
         else:
             like.delete()  # Unlike if already liked
             return Response({"message": "Tweet unliked"}, status=status.HTTP_200_OK)
 
 
+
 # -------------------------- COMMENTS CRUD --------------------------
 
 class CommentListCreateView(ListCreateAPIView):
-    """Allows users to view comments and post new ones (including replies)."""
+    """Allows users to view and post comments (including replies)."""
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """Fetch top-level comments for a tweet."""
         tweet_id = self.kwargs.get('tweet_id')
-        return Comment.objects.filter(tweet_id=tweet_id, parent__isnull=True)  # Only top-level comments
+        return Comment.objects.filter(tweet_id=tweet_id, parent__isnull=True)
 
     def perform_create(self, serializer):
-        """Assign the user and tweet to the comment, allow replies."""
+        """Assign the tweet and user to the comment, allow replies."""
         try:
             tweet = Tweet.objects.get(id=self.kwargs.get('tweet_id'))
         except Tweet.DoesNotExist:
@@ -90,7 +98,16 @@ class CommentListCreateView(ListCreateAPIView):
             except Comment.DoesNotExist:
                 raise PermissionDenied("Parent comment does not exist.")
 
+            # Create a notification for the original commenter
+            Notification.objects.create(
+                user=parent_comment.user,
+                sender=self.request.user,
+                notification_type='reply',
+                comment=parent_comment
+            )
+
         serializer.save(user=self.request.user, tweet=tweet, parent=parent_comment)
+
 
 
 
@@ -121,3 +138,27 @@ class PersonalizedFeedView(ListAPIView):
     def get_queryset(self):
         followed_users = self.request.user.following.values_list('id', flat=True)
         return Tweet.objects.filter(user_id__in=followed_users).order_by('-created_at')
+
+
+
+class NotificationListView(ListAPIView):
+    """Fetches all notifications for the logged-in user."""
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')
+
+
+class MarkNotificationAsReadView(APIView):
+    """Marks a notification as read."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, notification_id):
+        try:
+            notification = Notification.objects.get(id=notification_id, user=request.user)
+            notification.is_read = True
+            notification.save()
+            return Response({"message": "Notification marked as read"}, status=status.HTTP_200_OK)
+        except Notification.DoesNotExist:
+            return Response({"error": "Notification not found"}, status=status.HTTP_404_NOT_FOUND)

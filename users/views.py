@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .serializers import SignupSerializer
-
+from tweets.models import Notification
 
 class SignupView(CreateAPIView):
     """Handles user registration."""
@@ -57,6 +57,14 @@ class FollowUserView(APIView):
                 return Response({"error": "You cannot follow yourself"}, status=status.HTTP_400_BAD_REQUEST)
 
             request.user.following.add(user_to_follow)
+
+            # Create a notification for the followed user
+            Notification.objects.create(
+                user=user_to_follow,
+                sender=request.user,
+                notification_type='follow'
+            )
+
             return Response({"message": f"You are now following {user_to_follow.username}"}, status=status.HTTP_200_OK)
         except User.DoesNotExist:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)

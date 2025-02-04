@@ -45,3 +45,22 @@ class Comment(models.Model):
     def __str__(self):
         return f"{self.user.username} commented on {self.tweet.id}"
 
+
+class Notification(models.Model):
+    """Model to store notifications for user interactions."""
+    NOTIFICATION_TYPES = (
+        ('like', 'Like'),
+        ('reply', 'Reply'),
+        ('follow', 'Follow')
+    )
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_notifications")
+    notification_type = models.CharField(max_length=10, choices=NOTIFICATION_TYPES)
+    tweet = models.ForeignKey(Tweet, on_delete=models.CASCADE, null=True, blank=True)
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_read = models.BooleanField(default=False)  # Track if notification is read
+
+    def __str__(self):
+        return f"{self.sender.username} {self.notification_type} notification for {self.user.username}"

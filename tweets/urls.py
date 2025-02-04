@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import TweetListCreateView, TweetDetailView, LikeTweetView, CommentListCreateView, CommentDetailView, PersonalizedFeedView
+from .views import TweetListCreateView, TweetDetailView, LikeTweetView, CommentListCreateView, CommentDetailView, \
+    PersonalizedFeedView, NotificationListView, MarkNotificationAsReadView
 
 urlpatterns = [
     path('tweets/', TweetListCreateView.as_view(), name='tweet-list'),
@@ -8,4 +9,6 @@ urlpatterns = [
     path('tweets/<int:tweet_id>/comments/', CommentListCreateView.as_view(), name='comment-list'),
     path('comments/<int:pk>/', CommentDetailView.as_view(), name='comment-detail'),
     path('feed/', PersonalizedFeedView.as_view(), name='personalized-feed'),
+    path('notifications/', NotificationListView.as_view(), name='notifications'),
+    path('notifications/<int:notification_id>/read/', MarkNotificationAsReadView.as_view(), name='mark-notification-read'),
 ]
